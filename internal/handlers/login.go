@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/lucasgjanot/go-gator-feed/internal/app"
@@ -12,6 +13,10 @@ func HandlerLogin(s *app.State, cmd commands.Command) error {
 		return fmt.Errorf("usage: %s <name>", cmd.Name)
 	}
 	name := cmd.Args[0]
+
+	if _, err := s.DB.GetUser(context.Background(),name); err != nil {
+		return fmt.Errorf("User not found")
+	}
 
 	err := s.Config.SetUser(name)
 	if err != nil {
