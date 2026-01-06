@@ -32,6 +32,14 @@ func (f *FakeDatabase) GetUser(ctx context.Context, name string) (database.User,
 	return u, nil
 }
 
+func (f *FakeDatabase) GetUsers(ctx context.Context) ([]database.User, error) {
+	users := make([]database.User, len(f.Users))
+	for _, user := range f.Users {
+		users = append(users, user)
+	}
+	return users, nil
+}
+
 func (f *FakeDatabase) CreateUser(ctx context.Context, name string) (database.User, error) {
 	if f.CreateUserErr != nil {
 		return database.User{}, f.CreateUserErr

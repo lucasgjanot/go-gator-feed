@@ -10,6 +10,7 @@ import (
 var (
 	ErrUserNotFound = errors.New("user not found")
 	ErrUserExists   = errors.New("user already exists")
+	ErrNoUsers = errors.New("no users registered")
 )
 
 func IsUserExistsError(err error) bool {

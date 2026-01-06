@@ -9,7 +9,7 @@ import (
 
 func CommandRegister(s *runtime.State, cmd Command) error {
 	if len(cmd.Args) != 1 {
-		return fmt.Errorf("usage: %s <name>", cmd.Name)
+		return fmt.Errorf("usage: %s <username>", cmd.Name)
 	}
 	name := cmd.Args[0]
 

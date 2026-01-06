@@ -9,6 +9,7 @@ type Database interface {
 	CreateUser(ctx context.Context, name string) (database.User, error)
 	GetUser(ctx context.Context, name string) (database.User, error)
 	ResetUsers(ctx context.Context) error
+	GetUsers(ctx context.Context) ([]database.User, error)
 }
 
 type UserConfig interface {

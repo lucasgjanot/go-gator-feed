@@ -1,7 +1,10 @@
 package testutil
 
 import (
+	"fmt"
+
 	"github.com/lucasgjanot/go-gator-feed/internal/database"
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
 )
 
 type FakeOutput struct {
@@ -25,4 +28,14 @@ func (f *FakeOutput) UserLoggedIn(username string) {
 
 func (f *FakeOutput) ResetedDatabase() {
 	f.ResetedDatabaseCalled = true
+}
+
+func (f *FakeOutput) ListUsers(s *runtime.State, users []database.User) {
+	for _, user := range users {
+		if user.Name == s.Config.GetCurrentUser() {
+			fmt.Printf("* %s (current)\n", user.Name)
+			continue
+		}
+		fmt.Printf("* %s\n", user.Name)
+	}
 }

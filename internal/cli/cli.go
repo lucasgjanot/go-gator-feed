@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/lucasgjanot/go-gator-feed/internal/database"
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
 )
 
 type CLIOutput struct{}
@@ -20,4 +21,14 @@ func (CLIOutput) UserLoggedIn(username string) {
 
 func (CLIOutput) ResetedDatabase() {
 	fmt.Println("Database reset successfully!")
+}
+
+func (CLIOutput) ListUsers(s * runtime.State, users []database.User) {
+	for _, user := range users {
+		if user.Name == s.Config.GetCurrentUser() {
+			fmt.Printf("* %s (current)\n", user.Name)
+			continue
+		}
+		fmt.Printf("* %s\n", user.Name)
+	}
 }

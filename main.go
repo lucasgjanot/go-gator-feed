@@ -40,6 +40,7 @@ func main() {
 	cmds.Register("login", commands.CommandLogin)
 	cmds.Register("register", commands.CommandRegister)
 	cmds.Register("reset", commands.CommandReset)
+	cmds.Register("users", commands.CommandUsers)
 
 	if len(os.Args) < 2 {
 		log.Fatal("Usage: cli <command> [args...]")
@@ -63,6 +64,8 @@ func handleError(err error) {
 		fmt.Println("User not found")
 	case errors.Is(err, runtime.ErrUserExists):
 		fmt.Println("User already exists")
+	case errors.Is(err, runtime.ErrNoUsers):
+		fmt.Println("no users registered")
 	default:
 		// erro técnico, útil para debug
 		fmt.Println("Erro:", err)
