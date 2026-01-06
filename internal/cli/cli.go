@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/lucasgjanot/go-gator-feed/internal/database"
+	"github.com/lucasgjanot/go-gator-feed/internal/rss"
 	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
 )
 
@@ -31,4 +32,8 @@ func (CLIOutput) ListUsers(s * runtime.State, users []database.User) {
 		}
 		fmt.Printf("* %s\n", user.Name)
 	}
+}
+
+func (CLIOutput) PrintFeed(feed rss.RSSFeed) {
+	fmt.Printf("Feed: %+v\n", feed)
 }
