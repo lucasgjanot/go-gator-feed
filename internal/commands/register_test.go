@@ -1,0 +1,36 @@
+package commands
+
+import (
+	"testing"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/testutil"
+)
+
+func TestRegisterCommand(t *testing.T) {
+	t.Run("register user successfully", func(t *testing.T) {
+		builder := testutil.NewState()
+		state := builder.Build()
+
+		cmd := Command{
+			Name: "register",
+			Args: []string{"registerUser"},
+		}
+
+		err := CommandRegister(state, cmd)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if builder.Config.CurrentUser != "registerUser" {
+			t.Errorf("expected current user to be 'registerUser'")
+		}
+
+		if !builder.Output.UserCreatedCalled {
+			t.Fatalf("expected UserCreated to be called")
+		}
+
+		if builder.Output.User.Name != "registerUser" {
+			t.Errorf("expected output user name to be 'registerUser'")
+		}
+	})
+}

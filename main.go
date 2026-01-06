@@ -2,15 +2,17 @@ package main
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 	"log"
 	"os"
 
 	_ "github.com/lib/pq"
-	"github.com/lucasgjanot/go-gator-feed/internal/app"
+	"github.com/lucasgjanot/go-gator-feed/internal/cli"
 	"github.com/lucasgjanot/go-gator-feed/internal/commands"
 	"github.com/lucasgjanot/go-gator-feed/internal/config"
 	"github.com/lucasgjanot/go-gator-feed/internal/database"
-	"github.com/lucasgjanot/go-gator-feed/internal/handlers"
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
 )
 
 func main() {
@@ -21,33 +23,48 @@ func main() {
 
 	db, err := sql.Open("postgres", cfg.DBURL)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("database connection error: %v", err)
 	}
 	defer db.Close()
-	dbQueries := database.New(db)
 
-	programState := &app.State{
-		Config: &cfg,
-		DB:     dbQueries,
+	state := &runtime.State{
+		Config:   &cfg,
+		Database: database.New(db),
+		Output:   cli.CLIOutput{},
 	}
 
 	cmds := commands.Commands{
-		RegisteredCommands: make(map[string]func(*app.State, commands.Command) error),
+		RegisteredCommands: make(map[string]func(*runtime.State, commands.Command) error),
 	}
 
-	cmds.Register("login", handlers.HandlerLogin)
-	cmds.Register("register", handlers.HandlerRegister)
+	cmds.Register("login", commands.CommandLogin)
+	cmds.Register("register", commands.CommandRegister)
+	cmds.Register("reset", commands.CommandReset)
 
 	if len(os.Args) < 2 {
 		log.Fatal("Usage: cli <command> [args...]")
 	}
 
-	cmdName := os.Args[1]
-	cmdArgs := os.Args[2:]
-
-	err = cmds.Run(programState, commands.Command{Name: cmdName, Args: cmdArgs})
-	if err != nil {
-		log.Fatal(err)
+	cmd := commands.Command{
+		Name: os.Args[1],
+		Args: os.Args[2:],
 	}
 
+	if err := cmds.Run(state, cmd); err != nil {
+		handleError(err)
+		os.Exit(1)
+	}
+
+}
+
+func handleError(err error) {
+	switch {
+	case errors.Is(err, runtime.ErrUserNotFound):
+		fmt.Println("User not found")
+	case errors.Is(err, runtime.ErrUserExists):
+		fmt.Println("User already exists")
+	default:
+		// erro técnico, útil para debug
+		fmt.Println("Erro:", err)
+	}
 }
