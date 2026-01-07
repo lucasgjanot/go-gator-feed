@@ -52,3 +52,9 @@ func (CLIOutput) FeedCreated(feed database.Feed) {
 func (CLIOutput) PrintFeed(feed rss.RSSFeed) {
 	fmt.Printf("Feed: %+v\n", feed)
 }
+
+func (CLIOutput) PrintFeeds(feeds []database.GetFeedsWithUserNameRow) {
+	for _, feed := range feeds {
+		fmt.Printf("- Name: %s, Url: %s, Username: %s\n", feed.Name, feed.Url, feed.Username)
+	}
+}

@@ -16,6 +16,8 @@ type UsersInterface interface {
 
 type FeedsInterface interface {
 	CreateFeed(ctx context.Context, args database.CreateFeedParams) (database.Feed, error)
+	GetFeeds(ctx context.Context) ([]database.Feed, error)
+	GetFeedsWithUserName(ctx context.Context) ([]database.GetFeedsWithUserNameRow, error)
 }
 
 type UserConfig interface {

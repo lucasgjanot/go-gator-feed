@@ -6,3 +6,25 @@ VALUES
 RETURNING
     *
 ;
+
+-- name: GetFeeds :many
+SELECT
+    *
+FROM
+    feeds
+;
+
+-- name: GetFeedsWithUserName :many
+SELECT
+    feeds.id,
+    feeds.name,
+    feeds.url,
+    feeds.user_id,
+    feeds.created_at,
+    feeds.updated_at,
+    users.name AS username
+FROM
+    feeds
+INNER JOIN users
+    ON feeds.user_id = users.id
+;

@@ -52,3 +52,9 @@ func (f *FakeOutput) FeedCreated(feed database.Feed) {
 func (f *FakeOutput) PrintFeed(feed rss.RSSFeed){
 	fmt.Printf("Feed: %+v\n", feed)
 }
+
+func (f *FakeOutput) PrintFeeds(feeds []database.GetFeedsWithUserNameRow) {
+	for _, feed := range feeds {
+		fmt.Printf("- Name: %s, Url: %s\n", feed.Name, feed.Url)
+	}
+}

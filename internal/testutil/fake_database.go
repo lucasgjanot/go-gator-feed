@@ -9,6 +9,7 @@ import (
 type FakeDatabase struct {
 	Users map[string]database.User
 	Feeds map[string]database.Feed
+	FeedsWithUsername map[string]database.GetFeedsWithUserNameRow
 
 	CreateUserErr error
 	GetUserErr    error
@@ -19,6 +20,7 @@ func NewFakeDatabase() *FakeDatabase {
 	return &FakeDatabase{
 		Users: make(map[string]database.User),
 		Feeds: make(map[string]database.Feed),
+		FeedsWithUsername: make(map[string]database.GetFeedsWithUserNameRow),
 	}
 }
 
@@ -84,4 +86,21 @@ func (f *FakeDatabase) CreateFeed(
 
 	f.Feeds[args.Url] = feed
 	return feed, nil
+}
+
+func (f *FakeDatabase) GetFeeds(ctx context.Context) ([]database.Feed, error) {
+	feeds := make([]database.Feed, 0, len(f.Feeds))
+	for _, feed := range f.Feeds {
+		feeds = append(feeds, feed)
+	}
+	return feeds, nil
+
+}
+
+func (f *FakeDatabase) GetFeedsWithUserName(ctx context.Context) ([]database.GetFeedsWithUserNameRow, error) {
+	feeds := make([]database.GetFeedsWithUserNameRow, 0, len(f.FeedsWithUsername))
+	for _, feed := range f.FeedsWithUsername {
+		feeds = append(feeds, feed)
+	}
+	return feeds, nil
 }

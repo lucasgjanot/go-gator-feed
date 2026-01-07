@@ -12,5 +12,7 @@ type Output interface {
 	ListUsers(s *State, users []database.User)
 
 	PrintFeed(feed rss.RSSFeed)
+	PrintFeeds(feeds []database.GetFeedsWithUserNameRow)
 	FeedCreated(feed database.Feed)
+	
 }
