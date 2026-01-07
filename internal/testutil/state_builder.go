@@ -2,24 +2,28 @@ package testutil
 
 import "github.com/lucasgjanot/go-gator-feed/internal/runtime"
 
+
 type StateBuilder struct {
-	DB      *FakeDatabase
+	Database *FakeDatabase
 	Config *FakeConfig
-	Output  *FakeOutput
+	Output *FakeOutput
 }
 
 func NewState() *StateBuilder {
 	return &StateBuilder{
-		DB:      NewFakeDatabase(),
+		Database: NewFakeDatabase(),
 		Config: NewFakeConfig(),
-		Output:  &FakeOutput{},
+		Output: &FakeOutput{},
 	}
 }
 
 func (b *StateBuilder) Build() *runtime.State {
 	return &runtime.State{
-		Database: b.DB,
-		Config:  b.Config,
-		Output:   b.Output,
+		Database: runtime.Database{
+			User: b.Database,
+			Feed: b.Database,
+		},
+		Config: b.Config,
+		Output: b.Output,
 	}
 }

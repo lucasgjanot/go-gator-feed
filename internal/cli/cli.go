@@ -14,7 +14,10 @@ func (CLIOutput) UserCreated(user database.User) {
 	fmt.Println("User created successfully:")
 	fmt.Printf(" * ID:   %v\n", user.ID)
 	fmt.Printf(" * Name: %v\n", user.Name)
+	fmt.Printf(" * Created:       %v\n", user.CreatedAt)
+	fmt.Printf(" * Updated:       %v\n", user.UpdatedAt)
 }
+
 
 func (CLIOutput) UserLoggedIn(username string) {
 	fmt.Printf("Logged in as %s\n", username)
@@ -32,6 +35,18 @@ func (CLIOutput) ListUsers(s * runtime.State, users []database.User) {
 		}
 		fmt.Printf("* %s\n", user.Name)
 	}
+}
+
+
+
+func (CLIOutput) FeedCreated(feed database.Feed) {
+	fmt.Println("Feed created successfully:")
+	fmt.Printf(" * ID:   %v\n", feed.ID)
+	fmt.Printf(" * Name: %v\n", feed.Name)
+	fmt.Printf(" * Url: %v\n", feed.Url)
+	fmt.Printf(" * UserID: %v\n", feed.UserID)
+	fmt.Printf(" * Created:       %v\n", feed.CreatedAt)
+	fmt.Printf(" * Updated:       %v\n", feed.UpdatedAt)
 }
 
 func (CLIOutput) PrintFeed(feed rss.RSSFeed) {

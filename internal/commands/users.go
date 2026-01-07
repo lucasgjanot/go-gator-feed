@@ -12,7 +12,7 @@ func CommandUsers(s *runtime.State, cmd Command) error {
 		return fmt.Errorf("usage: %s", cmd.Name)
 	}
 
-	users, err := s.Database.GetUsers(context.Background())
+	users, err := s.Database.User.GetUsers(context.Background())
 	if err != nil {
 		return err
 	}

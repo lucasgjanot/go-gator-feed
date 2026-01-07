@@ -13,7 +13,7 @@ func CommandLogin(s *runtime.State, cmd Command) error {
 	}
 	name := cmd.Args[0]
 
-	if _, err := s.Database.GetUser(context.Background(), name); err != nil {
+	if _, err := s.Database.User.GetUser(context.Background(), name); err != nil {
 		if runtime.IsUserNotFoundError(err) {
 			return runtime.ErrUserNotFound
 		}

@@ -27,9 +27,15 @@ func main() {
 	}
 	defer db.Close()
 
+
+	queries := database.New(db)
+
 	state := &runtime.State{
 		Config:   &cfg,
-		Database: database.New(db),
+		Database: runtime.Database{
+			User: queries,
+			Feed: queries,
+		},
 		Output:   cli.CLIOutput{},
 	}
 
@@ -42,6 +48,7 @@ func main() {
 	cmds.Register("reset", commands.CommandReset)
 	cmds.Register("users", commands.CommandUsers)
 	cmds.Register("agg", commands.CommandAgg)
+	cmds.Register("addfeed", commands.CommandAddFeed)
 
 	if len(os.Args) < 2 {
 		log.Fatal("Usage: cli <command> [args...]")
@@ -53,7 +60,7 @@ func main() {
 	}
 
 	if err := cmds.Run(state, cmd); err != nil {
-		handleError(err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
 
@@ -67,6 +74,12 @@ func handleError(err error) {
 		fmt.Println("User already exists")
 	case errors.Is(err, runtime.ErrNoUsers):
 		fmt.Println("no users registered")
+	case errors.Is(err, runtime.ErrFeedNotFound):
+		fmt.Println("Feed not found")
+	case errors.Is(err, runtime.ErrFeedExists):
+		fmt.Println("Feed already exists")
+	case errors.Is(err, runtime.ErrNoFeed):
+		fmt.Println("no Feeds registered")
 	default:
 		// erro técnico, útil para debug
 		fmt.Println("Erro:", err)

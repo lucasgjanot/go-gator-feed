@@ -41,6 +41,14 @@ func (f *FakeOutput) ListUsers(s *runtime.State, users []database.User) {
 	}
 }
 
+
+func (f *FakeOutput) FeedCreated(feed database.Feed) {
+	fmt.Println("Feed created successfully:")
+	fmt.Printf(" * ID:   %v\n", feed.ID)
+	fmt.Printf(" * Name: %v\n", feed.Name)
+	fmt.Printf(" * Url: %v\n", feed.Url)
+	fmt.Printf(" * UserID: %v\n", feed.UserID)
+}
 func (f *FakeOutput) PrintFeed(feed rss.RSSFeed){
 	fmt.Printf("Feed: %+v\n", feed)
 }

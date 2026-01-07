@@ -13,7 +13,7 @@ func TestLoginCommand(t *testing.T) {
 	t.Run("sucessful login", func(t *testing.T) {
 		builder := testutil.NewState()
 
-		builder.DB.Users["testuser"] = database.User{Name: "testuser"}
+		builder.Database.Users["testuser"] = database.User{Name: "testuser"}
 
 		state := builder.Build()
 		cmd := Command{Name: "login", Args: []string{"testuser"}}

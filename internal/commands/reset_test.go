@@ -12,7 +12,7 @@ func TestResetCommand(t *testing.T) {
 		builder := testutil.NewState()
 		state := builder.Build()
 
-		builder.DB.Users["testuser"] = database.User{Name: "testuser"}
+		builder.Database.Users["testuser"] = database.User{Name: "testuser"}
 
 		cmd := Command{
 			Name: "reset",
@@ -25,8 +25,8 @@ func TestResetCommand(t *testing.T) {
 		}
 
 
-		if len(builder.DB.Users) != 0 {
-			t.Fatalf("expected lenght of users table to be 0, got %v", len(builder.DB.Users))
+		if len(builder.Database.Users) != 0 {
+			t.Fatalf("expected lenght of users table to be 0, got %v", len(builder.Database.Users))
 		}
 	})
 }

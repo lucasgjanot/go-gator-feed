@@ -13,7 +13,7 @@ func CommandRegister(s *runtime.State, cmd Command) error {
 	}
 	name := cmd.Args[0]
 
-	user, err := s.Database.CreateUser(context.Background(), name)
+	user, err := s.Database.User.CreateUser(context.Background(), name)
 	if err != nil {
 		if runtime.IsUserExistsError(err) {
 			return runtime.ErrUserExists

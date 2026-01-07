@@ -10,5 +10,7 @@ type Output interface {
 	UserLoggedIn(username string)
 	ResetedDatabase()
 	ListUsers(s *State, users []database.User)
+
 	PrintFeed(feed rss.RSSFeed)
+	FeedCreated(feed database.Feed)
 }
