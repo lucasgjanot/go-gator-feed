@@ -21,16 +21,25 @@ func TestRegisterCommand(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
+		// Verifica se o usuário atual foi atualizado
 		if builder.Config.CurrentUser != "registerUser" {
-			t.Errorf("expected current user to be 'registerUser'")
+			t.Errorf(
+				"expected current user to be 'registerUser', got '%s'",
+				builder.Config.CurrentUser,
+			)
 		}
 
+		// Verifica se o output foi chamado
 		if !builder.Output.UserCreatedCalled {
 			t.Fatalf("expected UserCreated to be called")
 		}
 
-		if builder.Output.User.Name != "registerUser" {
-			t.Errorf("expected output user name to be 'registerUser'")
+		// Verifica os dados passados para o output
+		if builder.Output.CreatedUser.Name != "registerUser" {
+			t.Errorf(
+				"expected output user name to be 'registerUser', got '%s'",
+				builder.Output.CreatedUser.Name,
+			)
 		}
 	})
 }

@@ -14,13 +14,11 @@ func CommandFeeds(s *runtime.State, cmd Command) error {
 
 	feeds, err := s.Database.Feed.GetFeedsWithUserName(context.Background())
 	if err != nil {
-		if runtime.IsFeedNotFoundError(err) {
+		if runtime.IsNotFoundError(err) {
 			return runtime.ErrNoFeed
 		}
 	}
 
 	s.Output.PrintFeeds(feeds)
 	return nil
-
-
 }

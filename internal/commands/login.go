@@ -14,7 +14,7 @@ func CommandLogin(s *runtime.State, cmd Command) error {
 	name := cmd.Args[0]
 
 	if _, err := s.Database.User.GetUser(context.Background(), name); err != nil {
-		if runtime.IsUserNotFoundError(err) {
+		if runtime.IsNotFoundError(err) {
 			return runtime.ErrUserNotFound
 		}
 		return err

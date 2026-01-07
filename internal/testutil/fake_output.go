@@ -1,25 +1,40 @@
 package testutil
 
 import (
-	"fmt"
-
 	"github.com/lucasgjanot/go-gator-feed/internal/database"
 	"github.com/lucasgjanot/go-gator-feed/internal/rss"
 	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
 )
 
 type FakeOutput struct {
-	UserCreatedCalled bool
-	UserLoggedInCalled bool
-	ResetedDatabaseCalled bool
+	// Flags de chamada
+	UserCreatedCalled        bool
+	UserLoggedInCalled       bool
+	ResetedDatabaseCalled    bool
+	ListUsersCalled          bool
+	FeedCreatedCalled        bool
+	PrintFeedCalled          bool
+	PrintFeedsCalled         bool
+	FeedFollowCreatedCalled  bool
+	PrintFeedFollowingCalled bool
 
-	User              database.User
-	LoggedUser  string
+	// Dados capturados
+	CreatedUser        database.User
+	LoggedUser         string
+	Users              []database.User
+	ListUsersState     *runtime.State
+
+	CreatedFeed        database.Feed
+	PrintedFeed        rss.RSSFeed
+	PrintedFeeds       []database.GetFeedsWithUserNameRow
+
+	CreatedFeedFollow  database.CreateFeedFollowRow
+	FeedFollowing      []database.GetFeedFollowsForUserRow
 }
 
 func (f *FakeOutput) UserCreated(user database.User) {
 	f.UserCreatedCalled = true
-	f.User = user
+	f.CreatedUser = user
 }
 
 func (f *FakeOutput) UserLoggedIn(username string) {
@@ -32,29 +47,32 @@ func (f *FakeOutput) ResetedDatabase() {
 }
 
 func (f *FakeOutput) ListUsers(s *runtime.State, users []database.User) {
-	for _, user := range users {
-		if user.Name == s.Config.GetCurrentUser() {
-			fmt.Printf("* %s (current)\n", user.Name)
-			continue
-		}
-		fmt.Printf("* %s\n", user.Name)
-	}
+	f.ListUsersCalled = true
+	f.ListUsersState = s
+	f.Users = users
 }
-
 
 func (f *FakeOutput) FeedCreated(feed database.Feed) {
-	fmt.Println("Feed created successfully:")
-	fmt.Printf(" * ID:   %v\n", feed.ID)
-	fmt.Printf(" * Name: %v\n", feed.Name)
-	fmt.Printf(" * Url: %v\n", feed.Url)
-	fmt.Printf(" * UserID: %v\n", feed.UserID)
+	f.FeedCreatedCalled = true
+	f.CreatedFeed = feed
 }
-func (f *FakeOutput) PrintFeed(feed rss.RSSFeed){
-	fmt.Printf("Feed: %+v\n", feed)
+
+func (f *FakeOutput) PrintFeed(feed rss.RSSFeed) {
+	f.PrintFeedCalled = true
+	f.PrintedFeed = feed
 }
 
 func (f *FakeOutput) PrintFeeds(feeds []database.GetFeedsWithUserNameRow) {
-	for _, feed := range feeds {
-		fmt.Printf("- Name: %s, Url: %s\n", feed.Name, feed.Url)
-	}
+	f.PrintFeedsCalled = true
+	f.PrintedFeeds = feeds
+}
+
+func (f *FakeOutput) FeedFollowCreated(feedFollow database.CreateFeedFollowRow) {
+	f.FeedFollowCreatedCalled = true
+	f.CreatedFeedFollow = feedFollow
+}
+
+func (f *FakeOutput) PrintFeedFollowing(feedFollowing []database.GetFeedFollowsForUserRow) {
+	f.PrintFeedFollowingCalled = true
+	f.FeedFollowing = feedFollowing
 }

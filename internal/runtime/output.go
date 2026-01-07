@@ -14,5 +14,7 @@ type Output interface {
 	PrintFeed(feed rss.RSSFeed)
 	PrintFeeds(feeds []database.GetFeedsWithUserNameRow)
 	FeedCreated(feed database.Feed)
+	FeedFollowCreated(feedFollow database.CreateFeedFollowRow)
+	PrintFeedFollowing(feedFollowing []database.GetFeedFollowsForUserRow)
 	
 }

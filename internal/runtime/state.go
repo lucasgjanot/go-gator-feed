@@ -18,6 +18,9 @@ type FeedsInterface interface {
 	CreateFeed(ctx context.Context, args database.CreateFeedParams) (database.Feed, error)
 	GetFeeds(ctx context.Context) ([]database.Feed, error)
 	GetFeedsWithUserName(ctx context.Context) ([]database.GetFeedsWithUserNameRow, error)
+	CreateFeedFollow(ctx context.Context, args database.CreateFeedFollowParams) (database.CreateFeedFollowRow, error)
+	GetFeedByUrl(ctx context.Context, url string) (database.Feed, error)
+	GetFeedFollowsForUser(ctx context.Context, name string) ([]database.GetFeedFollowsForUserRow, error)
 }
 
 type UserConfig interface {

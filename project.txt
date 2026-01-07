@@ -1,0 +1,1693 @@
+package cli
+
+import (
+	"fmt"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/database"
+	"github.com/lucasgjanot/go-gator-feed/internal/rss"
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+type CLIOutput struct{}
+
+func (CLIOutput) UserCreated(user database.User) {
+	fmt.Println("User created successfully:")
+	fmt.Printf(" * ID:   %v\n", user.ID)
+	fmt.Printf(" * Name: %v\n", user.Name)
+	fmt.Printf(" * Created:       %v\n", user.CreatedAt)
+	fmt.Printf(" * Updated:       %v\n", user.UpdatedAt)
+}
+
+
+func (CLIOutput) UserLoggedIn(username string) {
+	fmt.Printf("Logged in as %s\n", username)
+}
+
+func (CLIOutput) ResetedDatabase() {
+	fmt.Println("Database reset successfully!")
+}
+
+func (CLIOutput) ListUsers(s * runtime.State, users []database.User) {
+	for _, user := range users {
+		if user.Name == s.Config.GetCurrentUser() {
+			fmt.Printf("* %s (current)\n", user.Name)
+			continue
+		}
+		fmt.Printf("* %s\n", user.Name)
+	}
+}
+
+
+
+func (CLIOutput) FeedCreated(feed database.Feed) {
+	fmt.Println("Feed created successfully:")
+	fmt.Printf(" * ID:   %v\n", feed.ID)
+	fmt.Printf(" * Name: %v\n", feed.Name)
+	fmt.Printf(" * Url: %v\n", feed.Url)
+	fmt.Printf(" * UserID: %v\n", feed.UserID)
+	fmt.Printf(" * Created:       %v\n", feed.CreatedAt)
+	fmt.Printf(" * Updated:       %v\n", feed.UpdatedAt)
+}
+
+func (CLIOutput) PrintFeed(feed rss.RSSFeed) {
+	fmt.Printf("Feed: %+v\n", feed)
+}
+
+func (CLIOutput) PrintFeeds(feeds []database.GetFeedsWithUserNameRow) {
+	for _, feed := range feeds {
+		fmt.Printf("- Name: %s, Url: %s, Username: %s\n", feed.Name, feed.Url, feed.Username)
+	}
+}
+
+func (CLIOutput) FeedFollowCreated(feedFollow database.CreateFeedFollowRow) {
+	fmt.Printf(
+		"User: %s is now following %s Feed\n",
+		feedFollow.Username,
+		feedFollow.FeedName,
+	 )
+}
+
+func (CLIOutput) PrintFeedFollowing(feedFollowing []database.GetFeedFollowsForUserRow) {
+	for _, item := range feedFollowing {
+		fmt.Printf("- %s\n", item.FeedName)
+	}
+}package commands
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/database"
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+func CommandAddFeed(s *runtime.State, cmd Command) error {
+	if len(cmd.Args) != 2 {
+		return fmt.Errorf("usage: %s <feed_name> <feed_url>", cmd.Name)
+	}
+
+	feedName := cmd.Args[0]
+	feedUrl := cmd.Args[1]
+
+	if !strings.Contains(feedUrl, "http") {
+		return fmt.Errorf("invalid url")
+	}
+
+	user, err := s.Database.User.GetUser(context.Background(), s.Config.GetCurrentUser())
+	if err != nil {
+		return err
+	}
+
+	feed, err := s.Database.Feed.CreateFeed(
+		context.Background(),
+		database.CreateFeedParams{
+			Name: feedName,
+			Url: feedUrl,
+			UserID: user.ID,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	if _, err := s.Database.Feed.CreateFeedFollow(
+		context.Background(),
+		database.CreateFeedFollowParams{
+			UserID: user.ID,
+			FeedID: feed.ID,
+		},
+	); err != nil {
+		if runtime.IsExistsError(err) {
+			return runtime.ErrFeedFollowExists
+		}
+		return err
+	}
+	
+	s.Output.FeedCreated(feed)
+	return nil
+}package commands
+
+import (
+	"context"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/rss"
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+func CommandAgg(s *runtime.State, cmd Command) error {
+	feed, err := rss.FetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	if err != nil {
+		return err
+	}
+
+	s.Output.PrintFeed(*feed)
+	return nil
+}package commands
+
+import (
+	"errors"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+type Command struct {
+	Name string
+	Args []string
+}
+
+type Commands struct {
+	RegisteredCommands map[string]func(*runtime.State, Command) error
+}
+
+func (c *Commands) Register(name string, f func(*runtime.State, Command) error) {
+	c.RegisteredCommands[name] = f
+}
+
+func (c *Commands) Run(s *runtime.State, cmd Command) error {
+	f, ok := c.RegisteredCommands[cmd.Name]
+	if !ok {
+		return errors.New("command not found")
+	}
+
+	return f(s, cmd)
+}
+package commands
+
+import "testing"
+
+func TestCommands(t *testing.T) {
+	t.Run("Register Command", func(t *testing.T) {
+		t.Run("Unique user", func(t *testing.T) {
+			
+		})
+	})
+}package commands
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+func CommandFeeds(s *runtime.State, cmd Command) error {
+	if len(cmd.Args) != 0 {
+		return fmt.Errorf("usage: %s", cmd.Name)
+	}
+
+	feeds, err := s.Database.Feed.GetFeedsWithUserName(context.Background())
+	if err != nil {
+		if runtime.IsNotFoundError(err) {
+			return runtime.ErrNoFeed
+		}
+	}
+
+	s.Output.PrintFeeds(feeds)
+	return nil
+}package commands
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/database"
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+func CommandFollow(s *runtime.State, cmd Command) error {
+	if len(cmd.Args) != 1 {
+		return fmt.Errorf("usage: %s <feed_url>", cmd.Name)
+	}
+
+	feedUrl := cmd.Args[0]
+	fmt.Println(feedUrl)
+	if !strings.Contains(feedUrl, "http") {
+		return fmt.Errorf("invalid url")
+	}
+
+	user, err := s.Database.User.GetUser(
+		context.Background(),
+		s.Config.GetCurrentUser(),
+	)
+	if err != nil {
+		if runtime.IsNotFoundError(err) {
+			return runtime.ErrUserNotFound
+		}
+		return err
+	}
+
+	feed, err := s.Database.Feed.GetFeedByUrl(
+		context.Background(),
+		feedUrl,
+	)
+	if err != nil {
+		if runtime.IsNotFoundError(err) {
+			return runtime.ErrFeedNotFound
+		}
+		return err
+	}
+
+	feedFollow, err := s.Database.Feed.CreateFeedFollow(
+		context.Background(),
+		database.CreateFeedFollowParams{
+			UserID: user.ID,
+			FeedID: feed.ID,
+		},
+	)
+	if err != nil {
+		if runtime.IsExistsError(err) {
+			return runtime.ErrFeedFollowExists
+		}
+		return err
+	}
+	s.Output.FeedFollowCreated(feedFollow)
+	return nil
+}package commands
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+
+func CommandFollowing(s *runtime.State, cmd Command) error {
+	if len(cmd.Args) != 0 {
+		return fmt.Errorf("usage: %s", cmd.Name)
+	}
+
+	followingFeeds, err := s.Database.Feed.GetFeedFollowsForUser(
+		context.Background(),
+		s.Config.GetCurrentUser(),
+	)
+	if err != nil {
+		if runtime.IsNotFoundError(err) {
+			return runtime.ErrFeedFollowNotFound
+		}
+	}
+
+	if len(followingFeeds) == 0 {
+		return runtime.ErrFeedFollowNotFound
+	}
+
+	s.Output.PrintFeedFollowing(followingFeeds)
+	return nil
+
+}package commands
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+func CommandLogin(s *runtime.State, cmd Command) error {
+	if len(cmd.Args) != 1 {
+		return fmt.Errorf("usage: %s <username>", cmd.Name)
+	}
+	name := cmd.Args[0]
+
+	if _, err := s.Database.User.GetUser(context.Background(), name); err != nil {
+		if runtime.IsNotFoundError(err) {
+			return runtime.ErrUserNotFound
+		}
+		return err
+	}
+
+	if err := s.Config.SetUser(name); err != nil {
+		return fmt.Errorf("couldn't set current user: %w", err)
+	}
+	username := s.Config.GetCurrentUser()
+	s.Output.UserLoggedIn(username)
+	return nil
+}
+package commands
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/database"
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+	"github.com/lucasgjanot/go-gator-feed/internal/testutil"
+)
+
+func TestLoginCommand(t *testing.T) {
+	t.Run("sucessful login", func(t *testing.T) {
+		builder := testutil.NewState()
+
+		builder.Database.Users["testuser"] = database.User{Name: "testuser"}
+
+		state := builder.Build()
+		cmd := Command{Name: "login", Args: []string{"testuser"}}
+
+		err := CommandLogin(state, cmd)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if builder.Config.CurrentUser != "testuser" {
+			t.Errorf("expected CurrentUser 'janot', got %s", builder.Config.CurrentUser)
+		}
+	})
+
+	t.Run("login user not found", func(t *testing.T) {
+		state := testutil.NewState().Build()
+		cmd := Command{Name: "login", Args: []string{"unknown"}}
+
+		err := CommandLogin(state, cmd)
+		if !errors.Is(err, runtime.ErrUserNotFound) {
+			t.Fatalf("expected ErrUserNotFound, got %v", err)
+		}
+	})
+}
+package commands
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+func CommandRegister(s *runtime.State, cmd Command) error {
+	if len(cmd.Args) != 1 {
+		return fmt.Errorf("usage: %s <username>", cmd.Name)
+	}
+	name := cmd.Args[0]
+
+	user, err := s.Database.User.CreateUser(context.Background(), name)
+	if err != nil {
+		if runtime.IsExistsError(err) {
+			return runtime.ErrUserExists
+		}
+		return err
+	}
+
+	err = s.Config.SetUser(user.Name)
+	if err != nil {
+		return fmt.Errorf("couldn't set current user: %w", err)
+	}
+
+	if err := s.Config.SetUser(user.Name); err != nil {
+		return fmt.Errorf("could not set current user: %w", err)
+	}
+
+	s.Output.UserCreated(user)
+	return nil
+}
+package commands
+
+import (
+	"testing"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/testutil"
+)
+
+func TestRegisterCommand(t *testing.T) {
+	t.Run("register user successfully", func(t *testing.T) {
+		builder := testutil.NewState()
+		state := builder.Build()
+
+		cmd := Command{
+			Name: "register",
+			Args: []string{"registerUser"},
+		}
+
+		err := CommandRegister(state, cmd)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if builder.Config.CurrentUser != "registerUser" {
+			t.Errorf("expected current user to be 'registerUser'")
+		}
+
+		if !builder.Output.UserCreatedCalled {
+			t.Fatalf("expected UserCreated to be called")
+		}
+
+		if builder.Output.User.Name != "registerUser" {
+			t.Errorf("expected output user name to be 'registerUser'")
+		}
+	})
+}
+package commands
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+
+
+func CommandReset(s *runtime.State, cmd Command) error {
+	if len(cmd.Args) != 0 {
+		return fmt.Errorf("usage: %s", cmd.Name)
+	}
+
+	err := s.Database.User.ResetUsers(context.Background())
+	if err != nil {
+		return err
+	}
+	s.Output.ResetedDatabase()
+	return nil
+}package commands
+
+import (
+	"testing"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/database"
+	"github.com/lucasgjanot/go-gator-feed/internal/testutil"
+)
+
+func TestResetCommand(t *testing.T) {
+	t.Run("sucessfuly reseting database", func(t *testing.T) {
+		builder := testutil.NewState()
+		state := builder.Build()
+
+		builder.Database.Users["testuser"] = database.User{Name: "testuser"}
+
+		cmd := Command{
+			Name: "reset",
+			Args: []string{},
+		}
+
+		err := CommandReset(state, cmd)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+
+
+		if len(builder.Database.Users) != 0 {
+			t.Fatalf("expected lenght of users table to be 0, got %v", len(builder.Database.Users))
+		}
+	})
+}package commands
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+func CommandUsers(s *runtime.State, cmd Command) error {
+	if len(cmd.Args) != 0 {
+		return fmt.Errorf("usage: %s", cmd.Name)
+	}
+
+	users, err := s.Database.User.GetUsers(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if len(users) == 0 {
+		return runtime.ErrNoUsers
+	}
+
+	s.Output.ListUsers(s, users)
+	return nil
+}package config
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+)
+
+const configFileName = ".gatorconfig.json"
+
+var configPathFunc = getConfigFilePath
+
+type Config struct {
+	DBURL           string `json:"db_url"`
+	CurrentUsername string `json:"current_username"`
+}
+
+func (c *Config) SetUser(userName string) error {
+	c.CurrentUsername = userName
+	return write(*c)
+}
+
+func (c *Config) GetCurrentUser() string {
+	return c.CurrentUsername
+}
+
+func Read() (Config, error) {
+	var zero Config
+
+	fullPath, err := configPathFunc()
+	if err != nil {
+		return zero, err
+	}
+
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return zero, err
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	var cfg Config
+	err = decoder.Decode(&cfg)
+	if err != nil {
+		return zero, err
+	}
+
+	return cfg, nil
+}
+
+func getConfigFilePath() (string, error) {
+	var zero string
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return zero, err
+	}
+	fullPath := filepath.Join(home, configFileName)
+	return fullPath, nil
+}
+
+func write(cfg Config) error {
+	fullPath, err := configPathFunc()
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return err
+	}
+
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(cfg)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+package config
+
+import (
+	"path/filepath"
+	"testing"
+)
+
+func TestConfig(t *testing.T) {
+	t.Run("Reading Config file", func(t *testing.T) {
+		setupTestConfig(t)
+
+		initial := Config{
+			DBURL:           "postgres://test",
+			CurrentUsername: "",
+		}
+
+		if err := write(initial); err != nil {
+			t.Fatalf("failed to write config: %v", err)
+		}
+
+		cfg, err := Read()
+		if err != nil {
+			t.Fatalf("Read failed: %v", err)
+		}
+
+		if cfg.DBURL != initial.DBURL {
+			t.Errorf("expected DBURL %s, got %s", initial.DBURL, cfg.DBURL)
+		}
+
+		if cfg.CurrentUsername != initial.CurrentUsername {
+			t.Errorf(
+				"expected CurrentUsername %s, got %s",
+				initial.CurrentUsername,
+				cfg.CurrentUsername,
+			)
+		}
+	})
+	t.Run("Setting new user", func(t *testing.T) {
+		setupTestConfig(t)
+
+		cfg := Config{
+			DBURL:           "postgres://test",
+			CurrentUsername: "",
+		}
+
+		err := cfg.SetUser("setuser")
+		if err != nil {
+			t.Fatalf("SetUser failed: %v", err)
+		}
+
+		if cfg.CurrentUsername != "setuser" {
+			t.Errorf("expected CurrentUsername 'setuser', got %s", cfg.CurrentUsername)
+		}
+	})
+}
+
+func setupTestConfig(t *testing.T) {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, configFileName)
+
+	configPathFunc = func() (string, error) {
+		return tmpFile, nil
+	}
+
+	t.Cleanup(func() {
+		configPathFunc = getConfigFilePath
+	})
+}// Code generated by sqlc. DO NOT EDIT.
+// versions:
+//   sqlc v1.30.0
+
+package database
+
+import (
+	"context"
+	"database/sql"
+)
+
+type DBTX interface {
+	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
+	PrepareContext(context.Context, string) (*sql.Stmt, error)
+	QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
+}
+
+func New(db DBTX) *Queries {
+	return &Queries{db: db}
+}
+
+type Queries struct {
+	db DBTX
+}
+
+func (q *Queries) WithTx(tx *sql.Tx) *Queries {
+	return &Queries{
+		db: tx,
+	}
+}
+// Code generated by sqlc. DO NOT EDIT.
+// versions:
+//   sqlc v1.30.0
+// source: feed_follows.sql
+
+package database
+
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+const createFeedFollow = `-- name: CreateFeedFollow :one
+WITH inserted AS (
+    INSERT INTO feed_follows (user_id, feed_id)
+    VALUES ($1, $2)
+    RETURNING id, user_id, feed_id, created_at, updated_at
+)
+SELECT
+    inserted.id, inserted.user_id, inserted.feed_id, inserted.created_at, inserted.updated_at,
+    users.name      AS username,
+    feeds.name      AS feed_name
+FROM inserted
+JOIN users ON users.id = inserted.user_id
+JOIN feeds ON feeds.id = inserted.feed_id
+`
+
+type CreateFeedFollowParams struct {
+	UserID uuid.UUID
+	FeedID uuid.UUID
+}
+
+type CreateFeedFollowRow struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	FeedID    uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Username  string
+	FeedName  string
+}
+
+func (q *Queries) CreateFeedFollow(ctx context.Context, arg CreateFeedFollowParams) (CreateFeedFollowRow, error) {
+	row := q.db.QueryRowContext(ctx, createFeedFollow, arg.UserID, arg.FeedID)
+	var i CreateFeedFollowRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.FeedID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
+		&i.FeedName,
+	)
+	return i, err
+}
+
+const getFeedFollowsForUser = `-- name: GetFeedFollowsForUser :many
+SELECT 
+    feed_follows.id, feed_follows.user_id, feed_follows.feed_id, feed_follows.created_at, feed_follows.updated_at,
+    feeds.name AS feed_name,
+    users.name AS username
+FROM
+    feed_follows
+INNER JOIN users ON users.id = feed_follows.user_id
+INNER JOIN feeds ON feeds.id = feed_follows.feed_id
+WHERE 
+    users.name = $1
+`
+
+type GetFeedFollowsForUserRow struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	FeedID    uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	FeedName  string
+	Username  string
+}
+
+func (q *Queries) GetFeedFollowsForUser(ctx context.Context, name string) ([]GetFeedFollowsForUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedFollowsForUser, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFeedFollowsForUserRow
+	for rows.Next() {
+		var i GetFeedFollowsForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FeedID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.FeedName,
+			&i.Username,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+// Code generated by sqlc. DO NOT EDIT.
+// versions:
+//   sqlc v1.30.0
+// source: feeds.sql
+
+package database
+
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+const createFeed = `-- name: CreateFeed :one
+INSERT INTO
+    feeds (name, url, user_id)
+VALUES
+    ($1,$2,$3)
+RETURNING
+    id, name, url, user_id, created_at, updated_at
+`
+
+type CreateFeedParams struct {
+	Name   string
+	Url    string
+	UserID uuid.UUID
+}
+
+func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, createFeed, arg.Name, arg.Url, arg.UserID)
+	var i Feed
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Url,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getFeedByUrl = `-- name: GetFeedByUrl :one
+SELECT
+    id, name, url, user_id, created_at, updated_at
+FROM
+    feeds
+WHERE 
+    url = $1
+`
+
+func (q *Queries) GetFeedByUrl(ctx context.Context, url string) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, getFeedByUrl, url)
+	var i Feed
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Url,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getFeeds = `-- name: GetFeeds :many
+SELECT
+    id, name, url, user_id, created_at, updated_at
+FROM
+    feeds
+`
+
+func (q *Queries) GetFeeds(ctx context.Context) ([]Feed, error) {
+	rows, err := q.db.QueryContext(ctx, getFeeds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Feed
+	for rows.Next() {
+		var i Feed
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Url,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFeedsWithUserName = `-- name: GetFeedsWithUserName :many
+SELECT
+    feeds.id,
+    feeds.name,
+    feeds.url,
+    feeds.user_id,
+    feeds.created_at,
+    feeds.updated_at,
+    users.name AS username
+FROM
+    feeds
+INNER JOIN users
+    ON feeds.user_id = users.id
+`
+
+type GetFeedsWithUserNameRow struct {
+	ID        uuid.UUID
+	Name      string
+	Url       string
+	UserID    uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Username  string
+}
+
+func (q *Queries) GetFeedsWithUserName(ctx context.Context) ([]GetFeedsWithUserNameRow, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedsWithUserName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFeedsWithUserNameRow
+	for rows.Next() {
+		var i GetFeedsWithUserNameRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Url,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Username,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+// Code generated by sqlc. DO NOT EDIT.
+// versions:
+//   sqlc v1.30.0
+
+package database
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type Feed struct {
+	ID        uuid.UUID
+	Name      string
+	Url       string
+	UserID    uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type FeedFollow struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	FeedID    uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type User struct {
+	ID        uuid.UUID
+	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+// Code generated by sqlc. DO NOT EDIT.
+// versions:
+//   sqlc v1.30.0
+// source: users.sql
+
+package database
+
+import (
+	"context"
+)
+
+const createUser = `-- name: CreateUser :one
+INSERT INTO 
+    users (name)
+VALUES
+    ($1)
+RETURNING
+    id, name, created_at, updated_at
+`
+
+func (q *Queries) CreateUser(ctx context.Context, name string) (User, error) {
+	row := q.db.QueryRowContext(ctx, createUser, name)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUser = `-- name: GetUser :one
+SELECT
+    id, name, created_at, updated_at
+FROM
+    users
+WHERE
+    name=$1
+`
+
+func (q *Queries) GetUser(ctx context.Context, name string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUser, name)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUsers = `-- name: GetUsers :many
+SELECT
+    id, name, created_at, updated_at
+FROM
+    users
+`
+
+func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const resetUsers = `-- name: ResetUsers :exec
+DELETE FROM users
+`
+
+func (q *Queries) ResetUsers(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, resetUsers)
+	return err
+}
+package rss
+
+import (
+	"context"
+	"encoding/xml"
+	"fmt"
+	"html"
+	"io"
+	"net/http"
+)
+
+type RSSFeed struct {
+	Channel struct {
+		Title string `xml:"title"`
+		Link string `xml:"link"`
+		Description string `xml:"description"`
+		Item []RSSItem `xml:"item"`
+	} `xml:"channel"`
+}
+
+type RSSItem struct {
+	Title string `xml:"title"`
+	Link string `xml:"link"`
+	Description string `xml:"description"`
+	PubDate string `xml:"pubDate"`
+}
+
+func FetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", feedURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("User-Agent", "gator")
+
+	client := http.DefaultClient
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", res.StatusCode)
+	}
+
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var feed RSSFeed
+	if err := xml.Unmarshal(data, &feed); err != nil {
+		return nil, err
+	}
+
+	feed.Channel.Title = html.UnescapeString(feed.Channel.Title)
+	feed.Channel.Description = html.UnescapeString(feed.Channel.Description)
+
+	for i := range feed.Channel.Item {
+		feed.Channel.Item[i].Title =
+			html.UnescapeString(feed.Channel.Item[i].Title)
+		feed.Channel.Item[i].Description =
+			html.UnescapeString(feed.Channel.Item[i].Description)
+	}
+	return  &feed, nil
+}
+
+package runtime
+
+import (
+	"database/sql"
+	"errors"
+
+	"github.com/lib/pq"
+)
+
+var (
+	ErrUserNotFound = errors.New("user not found")
+	ErrUserExists   = errors.New("user already exists")
+	ErrNoUsers = errors.New("no users registered")
+	ErrFeedNotFound = errors.New("feed not found")
+	ErrFeedExists   = errors.New("feed already exists")
+	ErrNoFeed = errors.New("no feeds registered")
+	ErrFeedFollowExists = errors.New("user already follow this feed")
+	ErrFeedFollowNotFound = errors.New("user isn't following any feed")
+)
+
+func IsExistsError(err error) bool {
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		return pqErr.Code == "23505" // unique_violation
+	}
+	return false
+}
+
+func IsNotFoundError(err error) bool {
+	return errors.Is(err, sql.ErrNoRows)
+}package runtime
+
+import (
+	"github.com/lucasgjanot/go-gator-feed/internal/database"
+	"github.com/lucasgjanot/go-gator-feed/internal/rss"
+)
+
+type Output interface {
+	UserCreated(user database.User)
+	UserLoggedIn(username string)
+	ResetedDatabase()
+	ListUsers(s *State, users []database.User)
+
+	PrintFeed(feed rss.RSSFeed)
+	PrintFeeds(feeds []database.GetFeedsWithUserNameRow)
+	FeedCreated(feed database.Feed)
+	FeedFollowCreated(feedFollow database.CreateFeedFollowRow)
+	PrintFeedFollowing(feedFollowing []database.GetFeedFollowsForUserRow)
+	
+}
+package runtime
+
+import (
+	"context"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/database"
+)
+
+type UsersInterface interface {
+	CreateUser(ctx context.Context, name string) (database.User, error)
+	GetUser(ctx context.Context, name string) (database.User, error)
+	ResetUsers(ctx context.Context) error
+	GetUsers(ctx context.Context) ([]database.User, error)
+}
+
+
+type FeedsInterface interface {
+	CreateFeed(ctx context.Context, args database.CreateFeedParams) (database.Feed, error)
+	GetFeeds(ctx context.Context) ([]database.Feed, error)
+	GetFeedsWithUserName(ctx context.Context) ([]database.GetFeedsWithUserNameRow, error)
+	CreateFeedFollow(ctx context.Context, args database.CreateFeedFollowParams) (database.CreateFeedFollowRow, error)
+	GetFeedByUrl(ctx context.Context, url string) (database.Feed, error)
+	GetFeedFollowsForUser(ctx context.Context, name string) ([]database.GetFeedFollowsForUserRow, error)
+}
+
+type UserConfig interface {
+	SetUser(name string) error
+	GetCurrentUser() string
+}
+
+type Database struct {
+	User UsersInterface
+	Feed FeedsInterface
+}
+
+type State struct {
+	Database Database
+	Config  UserConfig
+	Output   Output
+}package testutil
+
+type FakeConfig struct {
+	CurrentUser string
+	SetUserErr  error
+}
+
+func NewFakeConfig() *FakeConfig {
+	return &FakeConfig{}
+}
+
+func (f *FakeConfig) SetUser(name string) error {
+	if f.SetUserErr != nil {
+		return f.SetUserErr
+	}
+	f.CurrentUser = name
+	return nil
+}
+
+func (f *FakeConfig) GetCurrentUser() string {
+	return f.CurrentUser
+}package testutil
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/lucasgjanot/go-gator-feed/internal/database"
+)
+
+type FakeFeedFollowsKey struct {
+	UserId string
+	FeedId string
+}
+
+type FakeDatabase struct {
+	Users map[string]database.User
+	Feeds map[string]database.Feed
+	FeedFollows map[FakeFeedFollowsKey]database.CreateFeedFollowRow
+	FeedsWithUsername map[string]database.GetFeedsWithUserNameRow
+
+	CreateUserErr error
+	GetUserErr    error
+	CreateFeedErr error
+	CreateFeedFollowErr error
+}
+
+func NewFakeDatabase() *FakeDatabase {
+	return &FakeDatabase{
+		Users: make(map[string]database.User),
+		Feeds: make(map[string]database.Feed),
+		FeedsWithUsername: make(map[string]database.GetFeedsWithUserNameRow),
+	}
+}
+
+/* ================= USERS ================= */
+
+func (f *FakeDatabase) CreateUser(
+	ctx context.Context,
+	name string,
+) (database.User, error) {
+	if f.CreateUserErr != nil {
+		return database.User{}, f.CreateUserErr
+	}
+
+	user := database.User{Name: name}
+	f.Users[name] = user
+	return user, nil
+}
+
+func (f *FakeDatabase) GetUser(
+	ctx context.Context,
+	name string,
+) (database.User, error) {
+	if f.GetUserErr != nil {
+		return database.User{}, f.GetUserErr
+	}
+
+	user, ok := f.Users[name]
+	if !ok {
+		return database.User{}, nil
+	}
+
+	return user, nil
+}
+
+func (f *FakeDatabase) ResetUsers(ctx context.Context) error {
+	f.Users = make(map[string]database.User)
+	return nil
+}
+
+func (f *FakeDatabase) GetUsers(ctx context.Context) ([]database.User, error) {
+	users := make([]database.User, 0, len(f.Users))
+	for _, u := range f.Users {
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+/* ================= FEEDS ================= */
+
+func (f *FakeDatabase) CreateFeed(
+	ctx context.Context,
+	args database.CreateFeedParams,
+) (database.Feed, error) {
+	if f.CreateFeedErr != nil {
+		return database.Feed{}, f.CreateFeedErr
+	}
+
+	feed := database.Feed{
+		Name:   args.Name,
+		Url:    args.Url,
+		UserID: args.UserID,
+	}
+
+	f.Feeds[args.Url] = feed
+	return feed, nil
+}
+
+func (f *FakeDatabase) GetFeeds(ctx context.Context) ([]database.Feed, error) {
+	feeds := make([]database.Feed, 0, len(f.Feeds))
+	for _, feed := range f.Feeds {
+		feeds = append(feeds, feed)
+	}
+	return feeds, nil
+
+}
+
+func (f *FakeDatabase) GetFeedsWithUserName(ctx context.Context) ([]database.GetFeedsWithUserNameRow, error) {
+	feeds := make([]database.GetFeedsWithUserNameRow, 0, len(f.FeedsWithUsername))
+	for _, feed := range f.FeedsWithUsername {
+		feeds = append(feeds, feed)
+	}
+	return feeds, nil
+}
+
+func (f *FakeDatabase) CreateFeedFollow(
+    ctx context.Context,
+    args database.CreateFeedFollowParams,
+) (database.CreateFeedFollowRow, error) {
+    if f.CreateFeedFollowErr != nil {
+        return database.CreateFeedFollowRow{}, f.CreateFeedFollowErr
+    }
+
+    // Lookup user
+    var user database.User
+    foundUser := false
+    for _, u := range f.Users {
+        if u.ID == args.UserID {
+            user = u
+            foundUser = true
+            break
+        }
+    }
+    if !foundUser {
+        return database.CreateFeedFollowRow{}, fmt.Errorf("user not found")
+    }
+
+    // Lookup feed
+    var feed database.Feed
+    foundFeed := false
+    for _, fObj := range f.Feeds {
+        if fObj.ID == args.FeedID {
+            feed = fObj
+            foundFeed = true
+            break
+        }
+    }
+    if !foundFeed {
+        return database.CreateFeedFollowRow{}, fmt.Errorf("feed not found")
+    }
+
+    now := time.Now()
+    row := database.CreateFeedFollowRow{
+        ID:        uuid.New(),
+        UserID:    args.UserID,
+        FeedID:    args.FeedID,
+        CreatedAt: now,
+        UpdatedAt: now,
+        Username:  user.Name,
+        FeedName:  feed.Name,
+    }
+
+    // Save in fake store
+    key := FakeFeedFollowsKey{
+        UserId: args.UserID.String(),
+        FeedId: args.FeedID.String(),
+    }
+    f.FeedFollows[key] = row
+
+    return row, nil
+}
+
+func (f *FakeDatabase) GetFeedByUrl(ctx context.Context, url string) (database.Feed, error) {
+	 feed, ok := f.Feeds[url]
+	 if !ok {
+		return database.Feed{}, fmt.Errorf("feed not found: %s", url) 
+	 } 
+	return feed, nil 
+}package testutil
+
+import (
+	"fmt"
+
+	"github.com/lucasgjanot/go-gator-feed/internal/database"
+	"github.com/lucasgjanot/go-gator-feed/internal/rss"
+	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
+)
+
+type FakeOutput struct {
+	UserCreatedCalled bool
+	UserLoggedInCalled bool
+	ResetedDatabaseCalled bool
+
+	User              database.User
+	LoggedUser  string
+}
+
+func (f *FakeOutput) UserCreated(user database.User) {
+	f.UserCreatedCalled = true
+	f.User = user
+}
+
+func (f *FakeOutput) UserLoggedIn(username string) {
+	f.UserLoggedInCalled = true
+	f.LoggedUser = username
+}
+
+func (f *FakeOutput) ResetedDatabase() {
+	f.ResetedDatabaseCalled = true
+}
+
+func (f *FakeOutput) ListUsers(s *runtime.State, users []database.User) {
+	for _, user := range users {
+		if user.Name == s.Config.GetCurrentUser() {
+			fmt.Printf("* %s (current)\n", user.Name)
+			continue
+		}
+		fmt.Printf("* %s\n", user.Name)
+	}
+}
+
+
+func (f *FakeOutput) FeedCreated(feed database.Feed) {
+	fmt.Println("Feed created successfully:")
+	fmt.Printf(" * ID:   %v\n", feed.ID)
+	fmt.Printf(" * Name: %v\n", feed.Name)
+	fmt.Printf(" * Url: %v\n", feed.Url)
+	fmt.Printf(" * UserID: %v\n", feed.UserID)
+}
+func (f *FakeOutput) PrintFeed(feed rss.RSSFeed){
+	fmt.Printf("Feed: %+v\n", feed)
+}
+
+func (f *FakeOutput) PrintFeeds(feeds []database.GetFeedsWithUserNameRow) {
+	for _, feed := range feeds {
+		fmt.Printf("- Name: %s, Url: %s\n", feed.Name, feed.Url)
+	}
+}
+
+func (f *FakeOutput) FeedFollowCreated(feedFollow database.CreateFeedFollowRow) {
+	fmt.Printf(
+		"User: %s is now following %s Feed\n",
+		feedFollow.Username,
+		feedFollow.FeedName,
+	 )
+}
+
+func (f *FakeOutput) PrintFeedFollowing(feedFollowing []database.GetFeedFollowsForUserRow) {
+	for _, item := range feedFollowing {
+		fmt.Printf("- %s\n", item.FeedName)
+	}
+}package testutil
+
+import "github.com/lucasgjanot/go-gator-feed/internal/runtime"
+
+
+type StateBuilder struct {
+	Database *FakeDatabase
+	Config *FakeConfig
+	Output *FakeOutput
+}
+
+func NewState() *StateBuilder {
+	return &StateBuilder{
+		Database: NewFakeDatabase(),
+		Config: NewFakeConfig(),
+		Output: &FakeOutput{},
+	}
+}
+
+func (b *StateBuilder) Build() *runtime.State {
+	return &runtime.State{
+		Database: runtime.Database{
+			User: b.Database,
+			Feed: b.Database,
+		},
+		Config: b.Config,
+		Output: b.Output,
+	}
+}
+-- name: CreateFeedFollow :one
+WITH inserted AS (
+    INSERT INTO feed_follows (user_id, feed_id)
+    VALUES ($1, $2)
+    RETURNING *
+)
+SELECT
+    inserted.*,
+    users.name      AS username,
+    feeds.name      AS feed_name
+FROM inserted
+JOIN users ON users.id = inserted.user_id
+JOIN feeds ON feeds.id = inserted.feed_id;
+
+-- name: GetFeedFollowsForUser :many
+SELECT 
+    feed_follows.*,
+    feeds.name AS feed_name,
+    users.name AS username
+FROM
+    feed_follows
+INNER JOIN users ON users.id = feed_follows.user_id
+INNER JOIN feeds ON feeds.id = feed_follows.feed_id
+WHERE 
+    users.name = $1;
+
+-- name: CreateFeed :one
+INSERT INTO
+    feeds (name, url, user_id)
+VALUES
+    ($1,$2,$3)
+RETURNING
+    *
+;
+
+-- name: GetFeeds :many
+SELECT
+    *
+FROM
+    feeds
+;
+
+-- name: GetFeedsWithUserName :many
+SELECT
+    feeds.id,
+    feeds.name,
+    feeds.url,
+    feeds.user_id,
+    feeds.created_at,
+    feeds.updated_at,
+    users.name AS username
+FROM
+    feeds
+INNER JOIN users
+    ON feeds.user_id = users.id
+;
+
+-- name: GetFeedByUrl :one
+SELECT
+    *
+FROM
+    feeds
+WHERE 
+    url = $1
+;-- name: CreateUser :one
+INSERT INTO 
+    users (name)
+VALUES
+    ($1)
+RETURNING
+    *
+;
+
+-- name: GetUser :one
+SELECT
+    *
+FROM
+    users
+WHERE
+    name=$1
+;
+
+-- name: ResetUsers :exec
+DELETE FROM users;
+
+-- name: GetUsers :many
+SELECT
+    *
+FROM
+    users
+;-- +goose Up
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+);
+
+-- +goose Down
+DROP TABLE users;-- +goose Up
+CREATE TABLE feeds (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    url TEXT NOT NULL UNIQUE,
+    user_id UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+
+    CONSTRAINT feeds_user_id_fkey
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+);
+
+-- +goose Down
+DROP TABLE feeds;-- +goose Up
+CREATE TABLE feed_follows (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    feed_id UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+
+    CONSTRAINT feed_follows_user_id_fkey
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+    CONSTRAINT feed_follows_feed_id_fkey
+        FOREIGN KEY (feed_id)
+        REFERENCES feeds(id)
+        ON DELETE CASCADE,
+    CONSTRAINT feed_follows_user_feed_unique
+        UNIQUE (user_id,feed_id)
+);
+
+-- +goose Down
+DROP TABLE feed_follows;

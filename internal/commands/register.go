@@ -15,7 +15,7 @@ func CommandRegister(s *runtime.State, cmd Command) error {
 
 	user, err := s.Database.User.CreateUser(context.Background(), name)
 	if err != nil {
-		if runtime.IsUserExistsError(err) {
+		if runtime.IsExistsError(err) {
 			return runtime.ErrUserExists
 		}
 		return err

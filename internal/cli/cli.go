@@ -58,3 +58,17 @@ func (CLIOutput) PrintFeeds(feeds []database.GetFeedsWithUserNameRow) {
 		fmt.Printf("- Name: %s, Url: %s, Username: %s\n", feed.Name, feed.Url, feed.Username)
 	}
 }
+
+func (CLIOutput) FeedFollowCreated(feedFollow database.CreateFeedFollowRow) {
+	fmt.Printf(
+		"User: %s is now following %s Feed\n",
+		feedFollow.Username,
+		feedFollow.FeedName,
+	 )
+}
+
+func (CLIOutput) PrintFeedFollowing(feedFollowing []database.GetFeedFollowsForUserRow) {
+	for _, item := range feedFollowing {
+		fmt.Printf("- %s\n", item.FeedName)
+	}
+}

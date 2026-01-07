@@ -37,6 +37,19 @@ func CommandAddFeed(s *runtime.State, cmd Command) error {
 	if err != nil {
 		return err
 	}
+
+	if _, err := s.Database.Feed.CreateFeedFollow(
+		context.Background(),
+		database.CreateFeedFollowParams{
+			UserID: user.ID,
+			FeedID: feed.ID,
+		},
+	); err != nil {
+		if runtime.IsExistsError(err) {
+			return runtime.ErrFeedFollowExists
+		}
+		return err
+	}
 	
 	s.Output.FeedCreated(feed)
 	return nil
