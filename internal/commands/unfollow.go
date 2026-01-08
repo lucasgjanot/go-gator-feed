@@ -9,16 +9,15 @@ import (
 	"github.com/lucasgjanot/go-gator-feed/internal/utils"
 )
 
-func CommandFollow(s *runtime.State, cmd Command, user database.User) error {
+func CommandUnfollow(s *runtime.State, cmd Command, user database.User) error {
 	if len(cmd.Args) != 1 {
 		return fmt.Errorf("usage: %s <feed_url>", cmd.Name)
 	}
 
 	feedURL := cmd.Args[0]
-
 	if err := utils.ValidateURL(feedURL); err != nil {
-	return err
-}
+		return err
+	}
 
 	feed, err := s.Database.Feed.GetFeedByUrl(
 		context.Background(),
@@ -31,19 +30,20 @@ func CommandFollow(s *runtime.State, cmd Command, user database.User) error {
 		return err
 	}
 
-	feedFollow, err := s.Database.Feed.CreateFeedFollow(
+	_, err = s.Database.Feed.DeleteFeedFollow(
 		context.Background(),
-		database.CreateFeedFollowParams{
+		database.DeleteFeedFollowParams{
 			UserID: user.ID,
 			FeedID: feed.ID,
 		},
 	)
 	if err != nil {
-		if runtime.IsExistsError(err) {
-			return runtime.ErrFeedFollowExists
+		if runtime.IsNotFoundError(err) {
+			return runtime.ErrFeedFollowNotExist
 		}
 		return err
 	}
-	s.Output.FeedFollowCreated(feedFollow)
+
+	s.Output.FeedFollowDeleted(feed, user)
 	return nil
 }

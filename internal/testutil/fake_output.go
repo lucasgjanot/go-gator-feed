@@ -17,12 +17,15 @@ type FakeOutput struct {
 	PrintFeedsCalled         bool
 	FeedFollowCreatedCalled  bool
 	PrintFeedFollowingCalled bool
+	FeedFollowDeletedCalled bool
 
 	// Dados capturados
 	CreatedUser        database.User
 	LoggedUser         string
 	Users              []database.User
 	ListUsersState     *runtime.State
+	User 			   database.User
+	Feed               database.Feed
 
 	CreatedFeed        database.Feed
 	PrintedFeed        rss.RSSFeed
@@ -75,4 +78,11 @@ func (f *FakeOutput) FeedFollowCreated(feedFollow database.CreateFeedFollowRow) 
 func (f *FakeOutput) PrintFeedFollowing(feedFollowing []database.GetFeedFollowsForUserRow) {
 	f.PrintFeedFollowingCalled = true
 	f.FeedFollowing = feedFollowing
+}
+
+
+func (f *FakeOutput) FeedFollowDeleted(feed database.Feed, user database.User) {
+	f.PrintFeedFollowingCalled = true
+	f.User = user
+	f.Feed = feed
 }

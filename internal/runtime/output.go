@@ -16,5 +16,6 @@ type Output interface {
 	FeedCreated(feed database.Feed)
 	FeedFollowCreated(feedFollow database.CreateFeedFollowRow)
 	PrintFeedFollowing(feedFollowing []database.GetFeedFollowsForUserRow)
+	FeedFollowDeleted(feed database.Feed, user database.User)
 	
 }

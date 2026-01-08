@@ -72,3 +72,7 @@ func (CLIOutput) PrintFeedFollowing(feedFollowing []database.GetFeedFollowsForUs
 		fmt.Printf("- %s\n", item.FeedName)
 	}
 }
+
+func (CLIOutput) FeedFollowDeleted(feed database.Feed, user database.User) {
+	fmt.Printf("User: %s stopped following Feed: %s\n", user.Name, feed.Name)
+}

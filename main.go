@@ -12,6 +12,7 @@ import (
 	"github.com/lucasgjanot/go-gator-feed/internal/commands"
 	"github.com/lucasgjanot/go-gator-feed/internal/config"
 	"github.com/lucasgjanot/go-gator-feed/internal/database"
+	"github.com/lucasgjanot/go-gator-feed/internal/middleware"
 	"github.com/lucasgjanot/go-gator-feed/internal/runtime"
 )
 
@@ -48,10 +49,11 @@ func main() {
 	cmds.Register("reset", commands.CommandReset)
 	cmds.Register("users", commands.CommandUsers)
 	cmds.Register("agg", commands.CommandAgg)
-	cmds.Register("addfeed", commands.CommandAddFeed)
+	cmds.Register("addfeed", middleware.MiddlewareLoggedIn(commands.CommandAddFeed))
 	cmds.Register("feeds", commands.CommandFeeds)
-	cmds.Register("follow", commands.CommandFollow)
+	cmds.Register("follow", middleware.MiddlewareLoggedIn(commands.CommandFollow))
 	cmds.Register("following", commands.CommandFollowing)
+	cmds.Register("unfollow", middleware.MiddlewareLoggedIn(commands.CommandUnfollow))
 
 	if len(os.Args) < 2 {
 		log.Fatal("Usage: cli <command> [args...]")
@@ -63,28 +65,12 @@ func main() {
 	}
 
 	if err := cmds.Run(state, cmd); err != nil {
+		if errors.Is(err,runtime.ErrFeedFollowNotFound) {
+			fmt.Println(err)
+			return
+		}
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-}
-
-func handleError(err error) {
-	switch {
-	case errors.Is(err, runtime.ErrUserNotFound):
-		fmt.Println("User not found")
-	case errors.Is(err, runtime.ErrUserExists):
-		fmt.Println("User already exists")
-	case errors.Is(err, runtime.ErrNoUsers):
-		fmt.Println("no users registered")
-	case errors.Is(err, runtime.ErrFeedNotFound):
-		fmt.Println("Feed not found")
-	case errors.Is(err, runtime.ErrFeedExists):
-		fmt.Println("Feed already exists")
-	case errors.Is(err, runtime.ErrNoFeed):
-		fmt.Println("no Feeds registered")
-	default:
-		// erro técnico, útil para debug
-		fmt.Println("Erro:", err)
-	}
 }

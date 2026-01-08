@@ -255,3 +255,24 @@ func (f *FakeDatabase) GetFeedFollowsForUser(
 
 	return result, nil
 }
+
+func (f *FakeDatabase) DeleteFeedFollow(
+	ctx context.Context,
+	arg database.DeleteFeedFollowParams,
+) (database.FeedFollow, error) {
+
+	for i, follow := range f.FeedFollows {
+		if follow.UserID == arg.UserID && follow.FeedID == arg.FeedID {
+
+			// remove do slice (preservando ordem)
+			f.FeedFollows = append(
+				f.FeedFollows[:i],
+				f.FeedFollows[i+1:]...,
+			)
+
+			return follow, nil
+		}
+	}
+
+	return database.FeedFollow{}, errors.New("feed follow not found")
+}

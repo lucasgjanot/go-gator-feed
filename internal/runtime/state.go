@@ -21,6 +21,7 @@ type FeedsInterface interface {
 	CreateFeedFollow(ctx context.Context, args database.CreateFeedFollowParams) (database.CreateFeedFollowRow, error)
 	GetFeedByUrl(ctx context.Context, url string) (database.Feed, error)
 	GetFeedFollowsForUser(ctx context.Context, name string) ([]database.GetFeedFollowsForUserRow, error)
+	DeleteFeedFollow(ctx context.Context, arg database.DeleteFeedFollowParams) (database.FeedFollow, error)
 }
 
 type UserConfig interface {

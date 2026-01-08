@@ -21,14 +21,18 @@ database-up:
 	docker compose -f ./infra/compose.yaml --env-file $(ENV_FILE) up -d
 
 wait-db:
-	@echo "⏳ Waiting for database..."
-	@until docker exec --env-file $(ENV_FILE) \
+	@echo -n "⏳ Waiting for database"
+	@until docker exec \
 		$(DB_CONTAINER) \
 		pg_isready \
-		> /dev/null 2>&1; do \
+			-U $(POSTGRES_USER) \
+			-d $(POSTGRES_DB) > /dev/null 2>&1; do \
+		printf "."; \
 		sleep 1; \
 	done
+	@echo ""
 	@echo "✅ Database is ready"
+
 
 migrations-up:
 	@echo "🚀 Running migrations..."
