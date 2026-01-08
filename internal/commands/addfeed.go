@@ -30,6 +30,10 @@ func CommandAddFeed(s *runtime.State, cmd Command, user database.User) error {
 		},
 	)
 	if err != nil {
+		if runtime.IsExistsError(err) {
+			return runtime.ErrFeedExists
+		}
+
 		return err
 	}
 

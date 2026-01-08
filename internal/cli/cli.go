@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/lucasgjanot/go-gator-feed/internal/database"
 	"github.com/lucasgjanot/go-gator-feed/internal/rss"
@@ -47,10 +48,18 @@ func (CLIOutput) FeedCreated(feed database.Feed) {
 	fmt.Printf(" * UserID: %v\n", feed.UserID)
 	fmt.Printf(" * Created:       %v\n", feed.CreatedAt)
 	fmt.Printf(" * Updated:       %v\n", feed.UpdatedAt)
+	fmt.Printf(" * Last Fetched:       %v\n", feed.LastFetchedAt)
 }
 
 func (CLIOutput) PrintFeed(feed rss.RSSFeed) {
 	fmt.Printf("Feed: %+v\n", feed)
+}
+
+func (CLIOutput) PrintFeedItems(feed rss.RSSFeed) {
+	for _, item := range feed.Channel.Item {
+		fmt.Printf("Found post: %s\n", item.Title)
+	}
+	
 }
 
 func (CLIOutput) PrintFeeds(feeds []database.GetFeedsWithUserNameRow) {
@@ -75,4 +84,23 @@ func (CLIOutput) PrintFeedFollowing(feedFollowing []database.GetFeedFollowsForUs
 
 func (CLIOutput) FeedFollowDeleted(feed database.Feed, user database.User) {
 	fmt.Printf("User: %s stopped following Feed: %s\n", user.Name, feed.Name)
+}
+
+func (CLIOutput) PrintRequestInterval(timeInterval time.Duration) {
+	fmt.Printf("Collecting feeds every %s\n", timeInterval.String())
+}
+
+func(CLIOutput) Print(str string) {
+	fmt.Println(str)
+}
+
+func(CLIOutput) PrintPosts(posts []database.GetPostsForUserRow, user database.User) {
+	fmt.Printf("Found %d posts for user %s:\n", len(posts), user.Name)
+	for _, post := range posts {
+		fmt.Printf("%s from %s\n", post.PublishedAt.Time.Format("Mon Jan 2"), post.FeedName)
+		fmt.Printf("--- %s ---\n", post.Title)
+		fmt.Printf("    %v\n", post.Description.String)
+		fmt.Printf("Link: %s\n", post.Url)
+		fmt.Println("=====================================")
+	}
 }

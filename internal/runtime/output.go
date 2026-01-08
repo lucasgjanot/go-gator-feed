@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"time"
+
 	"github.com/lucasgjanot/go-gator-feed/internal/database"
 	"github.com/lucasgjanot/go-gator-feed/internal/rss"
 )
@@ -17,5 +19,10 @@ type Output interface {
 	FeedFollowCreated(feedFollow database.CreateFeedFollowRow)
 	PrintFeedFollowing(feedFollowing []database.GetFeedFollowsForUserRow)
 	FeedFollowDeleted(feed database.Feed, user database.User)
+	PrintFeedItems(feed rss.RSSFeed)
+
+	PrintRequestInterval(timeInterval time.Duration)
+	Print(string)
+	PrintPosts(posts []database.GetPostsForUserRow, user database.User)
 	
 }

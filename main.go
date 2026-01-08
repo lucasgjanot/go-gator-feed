@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -36,6 +35,7 @@ func main() {
 		Database: runtime.Database{
 			User: queries,
 			Feed: queries,
+			Post: queries,
 		},
 		Output:   cli.CLIOutput{},
 	}
@@ -54,6 +54,7 @@ func main() {
 	cmds.Register("follow", middleware.MiddlewareLoggedIn(commands.CommandFollow))
 	cmds.Register("following", commands.CommandFollowing)
 	cmds.Register("unfollow", middleware.MiddlewareLoggedIn(commands.CommandUnfollow))
+	cmds.Register("browse", middleware.MiddlewareLoggedIn(commands.CommandBrowse))
 
 	if len(os.Args) < 2 {
 		log.Fatal("Usage: cli <command> [args...]")
@@ -65,10 +66,6 @@ func main() {
 	}
 
 	if err := cmds.Run(state, cmd); err != nil {
-		if errors.Is(err,runtime.ErrFeedFollowNotFound) {
-			fmt.Println(err)
-			return
-		}
 		fmt.Println(err)
 		os.Exit(1)
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 func CommandFeeds(s *runtime.State, cmd Command) error {
-	if len(cmd.Args) != 0 {
+	if len(cmd.Args) != 2 {
 		return fmt.Errorf("usage: %s", cmd.Name)
 	}
 

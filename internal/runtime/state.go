@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/lucasgjanot/go-gator-feed/internal/database"
 )
 
@@ -22,6 +23,13 @@ type FeedsInterface interface {
 	GetFeedByUrl(ctx context.Context, url string) (database.Feed, error)
 	GetFeedFollowsForUser(ctx context.Context, name string) ([]database.GetFeedFollowsForUserRow, error)
 	DeleteFeedFollow(ctx context.Context, arg database.DeleteFeedFollowParams) (database.FeedFollow, error)
+	MarkFeedFetched(ctx context.Context, id uuid.UUID) (database.Feed, error)
+	GetNextFeedToFetch(ctx context.Context) (database.Feed, error)
+}
+
+type PostsInterface interface {
+	CreatePost(ctx context.Context, arg database.CreatePostParams) (database.Post, error)
+	GetPostsForUser(ctx context.Context, arg database.GetPostsForUserParams) ([]database.GetPostsForUserRow, error)
 }
 
 type UserConfig interface {
@@ -32,6 +40,7 @@ type UserConfig interface {
 type Database struct {
 	User UsersInterface
 	Feed FeedsInterface
+	Post PostsInterface
 }
 
 type State struct {

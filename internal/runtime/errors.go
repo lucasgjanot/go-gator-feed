@@ -16,7 +16,8 @@ var (
 	ErrNoFeed = errors.New("no feeds registered")
 	ErrFeedFollowExists = errors.New("user already follow this feed")
 	ErrFeedFollowNotFound = errors.New("user isn't following any feed")
-	ErrFeedFollowNotExist = errors.New("user already didn't follow this feed")
+	ErrFeedFollowNotExist = errors.New("user don't follow this feed")
+	ErrNoFeedToFetch = errors.New("No more feeds to fetch")
 )
 
 func IsExistsError(err error) bool {
